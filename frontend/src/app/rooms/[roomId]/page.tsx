@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import styles from './page.module.css';
 import { getMatrixClient } from '@/lib/matrix';
-import { MatrixEvent } from 'matrix-js-sdk';
+import { MatrixEvent, RoomEvent } from 'matrix-js-sdk';
 
 interface Message {
     id: string;
@@ -81,7 +81,7 @@ export default function RoomPage() {
                     updateMessagesFromTimeline(room.getLiveTimeline().getEvents());
 
                     // Listen for new events
-                    client.on('Room.timeline', (event, room, toStartOfTimeline) => {
+                    client.on(RoomEvent.Timeline, (event, room, toStartOfTimeline) => {
                         if (room?.roomId === roomId && !toStartOfTimeline && event.getType() === 'm.room.message') {
                             updateMessagesFromTimeline(room.getLiveTimeline().getEvents());
                         }
