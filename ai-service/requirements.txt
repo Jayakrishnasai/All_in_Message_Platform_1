@@ -20,7 +20,8 @@ sqlalchemy==2.0.25
 
 # AI/ML Libraries
 transformers>=4.36.2
-torch>=2.9.0
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.1.0
 sentence-transformers>=2.2.2
 spacy>=3.7.2
 faiss-cpu>=1.7.4
