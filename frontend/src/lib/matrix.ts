@@ -1,4 +1,4 @@
-import { createClient, MatrixClient, ICreateRoomOpts } from 'matrix-js-sdk';
+import { createClient, MatrixClient, ICreateRoomOpts, Visibility, Preset } from 'matrix-js-sdk';
 
 let client: MatrixClient | null = null;
 
@@ -41,8 +41,8 @@ export const createMatrixRoom = async (name: string, topic?: string, isPublic: b
     const options: ICreateRoomOpts = {
         name,
         topic,
-        visibility: isPublic ? 'public' : 'private',
-        preset: isPublic ? 'public_chat' : 'private_chat',
+        visibility: isPublic ? Visibility.Public : Visibility.Private,
+        preset: isPublic ? Preset.PublicChat : Preset.PrivateChat,
     };
 
     const result = await client.createRoom(options);
