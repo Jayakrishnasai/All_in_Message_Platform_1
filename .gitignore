@@ -8,10 +8,9 @@ __pycache__/
 venv/
 
 # Environment
-.env
+# .env - allowing for deployment
 .env.local
 .env.*.local
-*.env
 
 # Build outputs
 .next/

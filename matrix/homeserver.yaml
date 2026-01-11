@@ -4,8 +4,8 @@
 # ===========================================
 
 # Server identification
-server_name: "messagehub.duckdns.org"
-public_baseurl: "https://messagehub.duckdns.org/"
+server_name: "matrix.org"
+public_baseurl: "https://matrix.org/"
 pid_file: /data/homeserver.pid
 
 # ===========================================
