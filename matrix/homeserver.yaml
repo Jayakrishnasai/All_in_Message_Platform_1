@@ -33,21 +33,12 @@ listeners:
         compress: false
 
 # ===========================================
-# Database Configuration (Supabase PostgreSQL)
+# Database Configuration (SQLite for simplicity)
 # ===========================================
 database:
-  name: psycopg2
+  name: sqlite3
   args:
-    user: postgres
-    password: "DataBase@1233"
-    database: postgres
-    host: db.nkdolzimfmyggokeukka.supabase.co
-    port: 5432
-    cp_min: 5
-    cp_max: 10
-    keepalives_idle: 30
-    keepalives_interval: 10
-    keepalives_count: 3
+    database: /data/homeserver.db
 
 # ===========================================
 # Media Storage
