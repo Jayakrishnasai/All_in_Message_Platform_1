@@ -8,8 +8,15 @@ services:
     image: matrixdotorg/synapse:latest
     container_name: matrix-synapse
     restart: unless-stopped
+    command: [ "run", "-m", "synapse.app.homeserver", "--config-path", "/data/homeserver.yaml", "--generate-missing-configs" ]
     environment:
+      - SYNAPSE_CONFIG_DIR=/data
       - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
+      - SYNAPSE_SERVER_NAME=${DOMAIN:-messagehub.duckdns.org}
+      - SYNAPSE_REPORT_STATS=no
+      - UID=991
+      - GID=991
+      - TZ=Asia/Kolkata
     volumes:
       - ../matrix:/data
       - synapse-media:/data/media_store
