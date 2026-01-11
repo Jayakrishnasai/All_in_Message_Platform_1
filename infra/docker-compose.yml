@@ -51,19 +51,19 @@ services:
       retries: 3
 
   # ===========================================
-  # Mautrix-Instagram Bridge (Optional - disabled by default)
+  # Mautrix-Instagram Bridge
   # ===========================================
-  # mautrix-instagram:
-  #   image: dock.mau.dev/mautrix/instagram:latest
-  #   container_name: mautrix-instagram
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ../bridge/mautrix-instagram:/data
-  #   networks:
-  #     - matrix-network
-  #   depends_on:
-  #     synapse:
-  #       condition: service_healthy
+  mautrix-instagram:
+    image: dock.mau.dev/mautrix/instagram:latest
+    container_name: mautrix-instagram
+    restart: unless-stopped
+    volumes:
+      - ../bridge/mautrix-instagram:/data
+    networks:
+      - matrix-network
+    depends_on:
+      synapse:
+        condition: service_healthy
 
   # ===========================================
   # AI Backend Service (FastAPI)

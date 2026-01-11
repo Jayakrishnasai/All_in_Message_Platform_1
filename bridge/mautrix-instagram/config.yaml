@@ -6,7 +6,7 @@
 # Homeserver connection
 homeserver:
   address: http://synapse:8008
-  domain: messagehub.duckdns.org
+  domain: matrix.org
   verify_ssl: false
   http_retry_count: 4
   status_endpoint: null
@@ -86,9 +86,9 @@ bridge:
   # Permissions
   permissions:
     "*": relay
-    "@admin:messagehub.duckdns.org": admin
+    "@admin:matrix.org": admin
     regex:
-      '@instagram_.*:messagehub\.duckdns\.org': admin
+      '@instagram_.*:matrix\\.org': admin
 
   # Relay mode
   relay:
