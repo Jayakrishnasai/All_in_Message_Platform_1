@@ -116,13 +116,20 @@ manhole:
 
 # Logging
 logging:
-  min_level: debug
-  writers:
-    - type: stdout
-      format: pretty-colored
-    - type: file
-      format: json
-      filename: /data/mautrix-instagram.log
-      max_size: 100
-      max_backups: 10
-      compress: true
+  version: 1
+  formatters:
+    colored:
+      (): mautrix.util.logging.ColorFormatter
+      format: "[%(asctime)s] [%(levelname)s@%(name)s] %(message)s"
+  handlers:
+    console:
+      class: logging.StreamHandler
+      formatter: colored
+  loggers:
+    mau:
+      level: DEBUG
+    aiohttp:
+      level: INFO
+  root:
+    level: DEBUG
+    handlers: [console]
