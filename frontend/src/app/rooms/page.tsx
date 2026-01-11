@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import styles from '../dashboard/page.module.css';
 import { getMatrixClient, createMatrixRoom } from '@/lib/matrix';
-import { Room as MatrixRoom } from 'matrix-js-sdk';
+import { Room as MatrixRoom, NotificationCountType } from 'matrix-js-sdk';
 
 interface Room {
     id: string;
@@ -51,7 +51,7 @@ export default function RoomsPage() {
                     id: room.roomId,
                     name: room.name,
                     member_count: room.getJoinedMemberCount(),
-                    unread_count: room.getUnreadNotificationCount('total')
+                    unread_count: room.getUnreadNotificationCount(NotificationCountType.Total)
                 }));
 
                 setRooms(formattedRooms);
