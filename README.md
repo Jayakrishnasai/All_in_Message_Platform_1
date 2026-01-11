@@ -1,4 +1,4 @@
-# Messaging Intelligence Platform
+# Messaging Intelligence Platform (All-in-One Message Platform)
 
 A central messaging hub that pulls chats from Instagram into Matrix, stores them, shows them in a web UI, and runs AI analysis on top of them.
 
@@ -74,7 +74,7 @@ Instagram → Mautrix Bridge → Matrix Synapse → Supabase PostgreSQL
 
 ```bash
 # Clone the repository
-git clone <repo-url>
+git clone https://github.com/Jayakrishnasai/All_in_Message_Platform_1.git
 cd message
 
 # Configure environment
