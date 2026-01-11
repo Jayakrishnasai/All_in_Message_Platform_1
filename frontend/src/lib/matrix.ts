@@ -56,6 +56,26 @@ export const joinRoom = async (roomIdOrAlias: string): Promise<void> => {
     await client.joinRoom(roomIdOrAlias);
 }
 
+export const getPublicRooms = async (searchTerm?: string) => {
+    const client = await getMatrixClient();
+    if (!client) throw new Error('Not connected to Matrix');
+
+    const response = await client.publicRooms({
+        limit: 50,
+        filter: {
+            generic_search_term: searchTerm
+        }
+    });
+    return response.chunk;
+};
+
+export const inviteUser = async (roomId: string, userId: string): Promise<void> => {
+    const client = await getMatrixClient();
+    if (!client) throw new Error('Not connected to Matrix');
+
+    await client.invite(roomId, userId);
+}
+
 export const logoutMatrix = () => {
     if (client) {
         client.stopClient();

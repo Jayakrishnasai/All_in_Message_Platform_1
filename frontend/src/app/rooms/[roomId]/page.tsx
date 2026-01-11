@@ -9,10 +9,12 @@ import {
     Brain,
     RefreshCw,
     Paperclip,
-    Smile
+    Smile,
+    UserPlus,
+    X
 } from 'lucide-react';
 import styles from './page.module.css';
-import { getMatrixClient } from '@/lib/matrix';
+import { getMatrixClient, inviteUser } from '@/lib/matrix';
 import { MatrixEvent, RoomEvent } from 'matrix-js-sdk';
 
 interface Message {
@@ -43,6 +45,8 @@ export default function RoomPage() {
     const [summary, setSummary] = useState<string | null>(null);
     const [showSummary, setShowSummary] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<string>('');
+    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [inviteUserId, setInviteUserId] = useState('');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const aiBackendUrl = process.env.NEXT_PUBLIC_AI_BACKEND_URL || '/api';
@@ -140,6 +144,19 @@ export default function RoomPage() {
         }
     };
 
+    const handleInviteUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await inviteUser(roomId, inviteUserId);
+            setIsInviteModalOpen(false);
+            setInviteUserId('');
+            alert('Invitation sent!');
+        } catch (error) {
+            console.error('Failed to invite user:', error);
+            alert('Failed to invite user. Please check the ID and try again.');
+        }
+    }
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
@@ -184,6 +201,13 @@ export default function RoomPage() {
                     </div>
                 </div>
                 <div className={styles.headerActions}>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={() => setIsInviteModalOpen(true)}
+                    >
+                        <UserPlus size={18} />
+                        Invite
+                    </button>
                     <button
                         className="btn btn-secondary"
                         onClick={generateSummary}
@@ -269,6 +293,68 @@ export default function RoomPage() {
                     <Send size={20} />
                 </button>
             </form>
+
+            {/* Invite Modal */}
+            {isInviteModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        background: 'var(--bg-card)',
+                        padding: '2rem',
+                        borderRadius: 'var(--radius-lg)',
+                        width: '90%',
+                        maxWidth: '400px',
+                        border: '1px solid var(--border-color)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                            <h2>Invite User</h2>
+                            <button onClick={() => setIsInviteModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleInviteUser}>
+                            <div className={styles.inputGroup}>
+                                <label className="label">User ID</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    value={inviteUserId}
+                                    onChange={(e) => setInviteUserId(e.target.value)}
+                                    placeholder="@user:server.com"
+                                    required
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    onClick={() => setIsInviteModalOpen(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                >
+                                    Send Invite
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
