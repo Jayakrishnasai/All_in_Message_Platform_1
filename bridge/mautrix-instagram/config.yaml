@@ -18,7 +18,7 @@ appservice:
   address: http://mautrix-instagram:29330
   hostname: 0.0.0.0
   port: 29330
-  database: "postgres://postgres:DataBase%401233@db.nkdolzimfmyggokeukka.supabase.co/mautrix_instagram?sslmode=require"
+  database: "sqlite:///data/mautrix-instagram.db"
   id: instagram
   bot:
     username: instagrambot
