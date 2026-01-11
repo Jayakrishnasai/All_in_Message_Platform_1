@@ -18,13 +18,7 @@ appservice:
   address: http://mautrix-instagram:29330
   hostname: 0.0.0.0
   port: 29330
-  database:
-    type: postgres
-    uri: postgresql://postgres:DataBase@1233@db.nkdolzimfmyggokeukka.supabase.co/mautrix_instagram?sslmode=require
-    max_open_conns: 20
-    max_idle_conns: 2
-    max_conn_idle_time: null
-    max_conn_lifetime: null
+  database: "postgres://postgres:DataBase%401233@db.nkdolzimfmyggokeukka.supabase.co/mautrix_instagram?sslmode=require"
   id: instagram
   bot:
     username: instagrambot
