@@ -105,6 +105,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def root():
+    """Root endpoint."""
+    return {
+        "message": "Messaging Intelligence Platform AI Backend",
+        "version": "1.0.0",
+        "status": "running",
+        "docs_url": "/docs"
+    }
+
 
 # ===========================================
 # Request/Response Models
