@@ -1,0 +1,54 @@
+# Messaging Intelligence Platform - Ignore File
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.env
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+*.egg-info/
+
+# Docker
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.pem
+*.key
+signing.key
+
+# Data
+*.faiss
+*.pkl
+media_store/
+
+# Testing
+coverage/
+.pytest_cache/
+htmlcov/
+
+# Misc
+*.bak
+*.tmp

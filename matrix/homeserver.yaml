@@ -1,0 +1,201 @@
+# Matrix Synapse Homeserver Configuration
+# ===========================================
+# For Messaging Intelligence Platform
+# ===========================================
+
+# Server identification
+server_name: "messagehub.duckdns.org"
+public_baseurl: "https://messagehub.duckdns.org/"
+pid_file: /data/homeserver.pid
+
+# ===========================================
+# Network Configuration
+# ===========================================
+listeners:
+  # Main client/server API
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    bind_addresses: ['0.0.0.0']
+    resources:
+      - names: [client, federation]
+        compress: false
+
+  # Federation (internal, NGINX handles external)
+  - port: 8448
+    tls: false
+    type: http
+    x_forwarded: true
+    bind_addresses: ['0.0.0.0']
+    resources:
+      - names: [federation]
+        compress: false
+
+# ===========================================
+# Database Configuration (Supabase PostgreSQL)
+# ===========================================
+database:
+  name: psycopg2
+  args:
+    user: postgres
+    password: "DataBase@1233"
+    database: postgres
+    host: db.nkdolzimfmyggokeukka.supabase.co
+    port: 5432
+    cp_min: 5
+    cp_max: 10
+    keepalives_idle: 30
+    keepalives_interval: 10
+    keepalives_count: 3
+
+# ===========================================
+# Media Storage
+# ===========================================
+media_store_path: /data/media_store
+max_upload_size: 50M
+max_image_pixels: 32M
+dynamic_thumbnails: true
+thumbnail_sizes:
+  - width: 32
+    height: 32
+    method: crop
+  - width: 96
+    height: 96
+    method: crop
+  - width: 320
+    height: 240
+    method: scale
+  - width: 640
+    height: 480
+    method: scale
+  - width: 800
+    height: 600
+    method: scale
+
+# ===========================================
+# Registration & Authentication
+# ===========================================
+enable_registration: true
+enable_registration_without_verification: true
+registration_shared_secret: "mip_registration_secret_2026_secure_key"
+
+# Password configuration
+password_config:
+  enabled: true
+  localdb_enabled: true
+  pepper: "mip_password_pepper_2026"
+
+# Session configuration
+session_lifetime: 24h
+refresh_token_lifetime: 168h
+
+# ===========================================
+# Security Keys
+# ===========================================
+macaroon_secret_key: "mip_macaroon_secret_2026_secure_key"
+form_secret: "mip_form_secret_2026_secure_key"
+signing_key_path: /data/signing.key
+
+# ===========================================
+# Logging Configuration
+# ===========================================
+log_config: /data/log.config
+
+# ===========================================
+# Caching (Redis)
+# ===========================================
+redis:
+  enabled: true
+  host: redis
+  port: 6379
+
+caches:
+  global_factor: 0.5
+  expire_caches: true
+  cache_entry_ttl: 30m
+
+# ===========================================
+# Federation
+# ===========================================
+federation_domain_whitelist: []
+allow_public_rooms_without_auth: false
+allow_public_rooms_over_federation: false
+
+# ===========================================
+# Rate Limiting
+# ===========================================
+rc_message:
+  per_second: 0.2
+  burst_count: 10
+
+rc_registration:
+  per_second: 0.1
+  burst_count: 3
+
+rc_login:
+  address:
+    per_second: 0.1
+    burst_count: 5
+  account:
+    per_second: 0.1
+    burst_count: 5
+  failed_attempts:
+    per_second: 0.1
+    burst_count: 3
+
+# ===========================================
+# URL Previews
+# ===========================================
+url_preview_enabled: true
+url_preview_ip_range_blacklist:
+  - '127.0.0.0/8'
+  - '10.0.0.0/8'
+  - '172.16.0.0/12'
+  - '192.168.0.0/16'
+  - '100.64.0.0/10'
+  - '192.0.0.0/24'
+  - '169.254.0.0/16'
+  - '192.88.99.0/24'
+  - '198.18.0.0/15'
+  - '192.0.2.0/24'
+  - '198.51.100.0/24'
+  - '203.0.113.0/24'
+  - '224.0.0.0/4'
+  - '::1/128'
+  - 'fe80::/10'
+  - 'fc00::/7'
+  - '2001:db8::/32'
+  - 'ff00::/8'
+  - 'fec0::/10'
+
+# ===========================================
+# Application Services
+# ===========================================
+app_service_config_files:
+  - /data/appservices/instagram-registration.yaml
+
+# ===========================================
+# Room Settings
+# ===========================================
+default_room_version: "10"
+forgotten_room_retention_period: 7d
+
+# ===========================================
+# Push Notifications
+# ===========================================
+push:
+  include_content: true
+  group_unread_count_by_room: true
+
+# ===========================================
+# Metrics
+# ===========================================
+enable_metrics: false
+report_stats: false
+
+# ===========================================
+# Experimental Features
+# ===========================================
+experimental_features:
+  msc2716_enabled: true

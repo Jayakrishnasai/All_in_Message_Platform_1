@@ -1,0 +1,134 @@
+# Mautrix-Instagram Bridge Configuration
+# ===========================================
+# For Messaging Intelligence Platform
+# ===========================================
+
+# Homeserver connection
+homeserver:
+  address: http://synapse:8008
+  domain: messagehub.duckdns.org
+  verify_ssl: false
+  http_retry_count: 4
+  status_endpoint: null
+  message_send_checkpoint_target: null
+  async_media: false
+
+# Application service configuration
+appservice:
+  address: http://mautrix-instagram:29330
+  hostname: 0.0.0.0
+  port: 29330
+  database:
+    type: postgres
+    uri: postgresql://postgres:DataBase@1233@db.nkdolzimfmyggokeukka.supabase.co/mautrix_instagram?sslmode=require
+    max_open_conns: 20
+    max_idle_conns: 2
+    max_conn_idle_time: null
+    max_conn_lifetime: null
+  id: instagram
+  bot:
+    username: instagrambot
+    displayname: Instagram Bridge Bot
+    avatar: mxc://maunium.net/JxjlbZUlCPULEeHZSwleUXQv
+  ephemeral_events: true
+  async_transactions: false
+  as_token: as_instagram_token_2026_secure_random_string_here
+  hs_token: hs_instagram_token_2026_secure_random_string_here
+
+# Bridge-specific settings
+bridge:
+  username_template: "instagram_{userid}"
+  displayname_template: "{displayname} (IG)"
+  
+  # Portal settings
+  portal_message_buffer: 128
+  personal_filtering_spaces: true
+  delivery_receipts: true
+  
+  # Message settings
+  message_status_events: false
+  message_error_notices: true
+  resend_bridge_info: false
+  
+  # Media settings
+  caption_in_message: false
+  federate_rooms: false
+  
+  # Bridging behavior
+  bridge_notices: true
+  
+  # Backfill
+  backfill:
+    enabled: true
+    max_conversations: 20
+    max_total_pages: -1
+    page_delay: 5
+    post_batch_delay: 20
+    max_batch_events: 100
+    unread_hours_threshold: 720
+  
+  # Encryption (optional but recommended)
+  encryption:
+    allow: true
+    default: false
+    appservice: false
+    require: false
+    allow_key_sharing: true
+    plaintext_mentions: false
+    delete_keys:
+      delete_outbound_on_ack: false
+      dont_store_outbound: false
+      ratchet_on_decrypt: false
+      delete_fully_used_on_decrypt: false
+      delete_prev_on_new_session: false
+      delete_on_device_delete: false
+      periodically_delete_expired: false
+      delete_outdated_inbound: false
+    verification_levels:
+      receive: unverified
+      send: unverified
+      share: cross-signed-tofu
+  
+  # Permissions
+  permissions:
+    "*": relay
+    "@admin:messagehub.duckdns.org": admin
+    regex:
+      '@instagram_.*:messagehub\.duckdns\.org': admin
+
+  # Relay mode
+  relay:
+    enabled: true
+    message_formats:
+      m.text: "<b>{{ .Sender.Displayname }}</b>: {{ .Message }}"
+      m.notice: "<b>{{ .Sender.Displayname }}</b>: {{ .Message }}"
+      m.emote: "* <b>{{ .Sender.Displayname }}</b> {{ .Message }}"
+      m.file: "<b>{{ .Sender.Displayname }}</b> sent a file"
+      m.image: "<b>{{ .Sender.Displayname }}</b> sent an image"
+      m.audio: "<b>{{ .Sender.Displayname }}</b> sent an audio file"
+      m.video: "<b>{{ .Sender.Displayname }}</b> sent a video"
+      m.location: "<b>{{ .Sender.Displayname }}</b> sent a location"
+
+# Instagram-specific settings
+instagram:
+  device_seed: auto
+  
+# Manhole (debugging)
+manhole:
+  enabled: false
+  path: /var/tmp/mautrix-instagram.manhole
+  whitelist:
+    - 0
+
+# Logging
+logging:
+  min_level: debug
+  writers:
+    - type: stdout
+      format: pretty-colored
+    - type: file
+      format: json
+      filename: /data/mautrix-instagram.log
+      max_size: 100
+      max_backups: 10
+      compress: true

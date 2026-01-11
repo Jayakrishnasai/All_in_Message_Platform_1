@@ -1,0 +1,157 @@
+version: '3.8'
+
+services:
+  # ===========================================
+  # Matrix Synapse - Messaging Core
+  # ===========================================
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: matrix-synapse
+    restart: unless-stopped
+    environment:
+      - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
+    volumes:
+      - ../matrix:/data
+      - synapse-media:/data/media_store
+    ports:
+      - "8008:8008"
+      - "8448:8448"
+    networks:
+      - matrix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - redis
+
+  # ===========================================
+  # Redis - Caching & Session Store
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: matrix-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - matrix-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================
+  # Mautrix-Instagram Bridge
+  # ===========================================
+  mautrix-instagram:
+    image: dock.mau.dev/mautrix/instagram:latest
+    container_name: mautrix-instagram
+    restart: unless-stopped
+    volumes:
+      - ../bridge/mautrix-instagram:/data
+    networks:
+      - matrix-network
+    depends_on:
+      - synapse
+
+  # ===========================================
+  # AI Backend Service (FastAPI)
+  # ===========================================
+  ai-service:
+    build:
+      context: ../ai-service
+      dockerfile: Dockerfile
+    container_name: ai-backend
+    restart: unless-stopped
+    environment:
+      - MATRIX_HOMESERVER_URL=http://synapse:8008
+      - MATRIX_ACCESS_TOKEN=${MATRIX_ACCESS_TOKEN}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
+      - HF_HOME=/app/models
+      - TRANSFORMERS_CACHE=/app/models
+    volumes:
+      - ai-models:/app/models
+      - ai-data:/app/data
+    ports:
+      - "8000:8000"
+    networks:
+      - matrix-network
+    depends_on:
+      - synapse
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # Frontend (Next.js)
+  # ===========================================
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_MATRIX_HOMESERVER_URL=${MATRIX_HOMESERVER_URL}
+      - NEXT_PUBLIC_AI_BACKEND_URL=${AI_BACKEND_URL}
+      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${SUPABASE_KEY}
+    ports:
+      - "3000:3000"
+    networks:
+      - matrix-network
+    depends_on:
+      - synapse
+      - ai-service
+
+  # ===========================================
+  # NGINX Reverse Proxy
+  # ===========================================
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - certbot-webroot:/var/www/certbot:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - matrix-network
+    depends_on:
+      - synapse
+      - ai-service
+      - frontend
+
+  # ===========================================
+  # Certbot for SSL (Optional)
+  # ===========================================
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - matrix-network
+
+networks:
+  matrix-network:
+    driver: bridge
+
+volumes:
+  synapse-media:
+  redis-data:
+  ai-models:
+  ai-data:
+  certbot-webroot:

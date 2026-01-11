@@ -1,0 +1,25 @@
+# Mautrix-Instagram Bridge Appservice Registration
+# ===========================================
+# This file must be referenced in homeserver.yaml
+# ===========================================
+
+id: instagram
+url: http://mautrix-instagram:29330
+as_token: as_instagram_token_2026_secure_random_string_here
+hs_token: hs_instagram_token_2026_secure_random_string_here
+sender_localpart: instagrambot
+rate_limited: false
+
+namespaces:
+  users:
+    - exclusive: true
+      regex: '@instagram_.*:dailyfix-matrix\.duckdns\.org'
+    - exclusive: true
+      regex: '@instagrambot:dailyfix-matrix\.duckdns\.org'
+  aliases:
+    - exclusive: true
+      regex: '#instagram_.*:dailyfix-matrix\.duckdns\.org'
+  rooms: []
+
+de.sorunome.msc2409.push_ephemeral: true
+push_ephemeral: true
