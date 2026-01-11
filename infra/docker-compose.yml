@@ -8,14 +8,12 @@ services:
     image: matrixdotorg/synapse:latest
     container_name: matrix-synapse
     restart: unless-stopped
-    command: [ "run", "-m", "synapse.app.homeserver", "--config-path", "/data/homeserver.yaml", "--generate-missing-configs" ]
+    user: "0:0" # Run as root to avoid permission issues
     environment:
       - SYNAPSE_CONFIG_DIR=/data
       - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
       - SYNAPSE_SERVER_NAME=${DOMAIN:-messagehub.duckdns.org}
       - SYNAPSE_REPORT_STATS=no
-      - UID=991
-      - GID=991
       - TZ=Asia/Kolkata
     volumes:
       - ../matrix:/data
@@ -29,9 +27,11 @@ services:
       test: [ "CMD", "curl", "-f", "http://localhost:8008/health" ]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 60s
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   # ===========================================
   # Redis - Caching & Session Store
@@ -51,18 +51,19 @@ services:
       retries: 3
 
   # ===========================================
-  # Mautrix-Instagram Bridge
+  # Mautrix-Instagram Bridge (Optional - disabled by default)
   # ===========================================
-  mautrix-instagram:
-    image: dock.mau.dev/mautrix/instagram:latest
-    container_name: mautrix-instagram
-    restart: unless-stopped
-    volumes:
-      - ../bridge/mautrix-instagram:/data
-    networks:
-      - matrix-network
-    depends_on:
-      - synapse
+  # mautrix-instagram:
+  #   image: dock.mau.dev/mautrix/instagram:latest
+  #   container_name: mautrix-instagram
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ../bridge/mautrix-instagram:/data
+  #   networks:
+  #     - matrix-network
+  #   depends_on:
+  #     synapse:
+  #       condition: service_healthy
 
   # ===========================================
   # AI Backend Service (FastAPI)
@@ -74,7 +75,7 @@ services:
     container_name: ai-backend
     restart: unless-stopped
     environment:
-      - MATRIX_HOMESERVER_URL=http://synapse:8008
+      - MATRIX_HOMESERVER_URL=${MATRIX_HOMESERVER_URL:-http://synapse:8008}
       - MATRIX_ACCESS_TOKEN=${MATRIX_ACCESS_TOKEN}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
@@ -88,8 +89,6 @@ services:
       - "8000:8000"
     networks:
       - matrix-network
-    depends_on:
-      - synapse
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
@@ -114,12 +113,9 @@ services:
       - "3000:3000"
     networks:
       - matrix-network
-    depends_on:
-      - synapse
-      - ai-service
 
   # ===========================================
-  # NGINX Reverse Proxy
+  # NGINX Reverse Proxy (HTTP only for now)
   # ===========================================
   nginx:
     image: nginx:alpine
@@ -127,30 +123,14 @@ services:
     restart: unless-stopped
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
       - certbot-webroot:/var/www/certbot:ro
     ports:
       - "80:80"
-      - "443:443"
     networks:
       - matrix-network
     depends_on:
-      - synapse
       - ai-service
       - frontend
-
-  # ===========================================
-  # Certbot for SSL (Optional)
-  # ===========================================
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-      - ./nginx/ssl:/etc/letsencrypt
-      - certbot-webroot:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    networks:
-      - matrix-network
 
 networks:
   matrix-network:
