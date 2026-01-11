@@ -29,6 +29,14 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: process.env.AI_BACKEND_INTERNAL_URL || 'http://ai-service:8000/api/:path*',
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
