@@ -12,7 +12,8 @@ import {
     Lock,
     Globe,
     Users,
-    Hash
+    Hash,
+    Loader2
 } from 'lucide-react';
 import styles from '../dashboard/page.module.css';
 import { getMatrixClient, createMatrixRoom, getPublicRooms, joinRoom } from '@/lib/matrix';
@@ -25,9 +26,25 @@ interface Room {
     unread_count?: number;
     is_joined?: boolean;
     topic?: string;
+    avatar_color?: string;
 }
 
 type Tab = 'my_rooms' | 'public_directory';
+
+const getAvatarColor = (id: string) => {
+    const colors = [
+        'linear-gradient(135deg, #FF6B6B 0%, #EE5D5D 100%)',
+        'linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%)',
+        'linear-gradient(135deg, #43E97B 0%, #38F9D7 100%)',
+        'linear-gradient(135deg, #FA709A 0%, #FEE140 100%)',
+        'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
+    ];
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+        hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+};
 
 export default function RoomsPage() {
     const router = useRouter();
@@ -35,6 +52,7 @@ export default function RoomsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<Tab>('my_rooms');
+    const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
 
     // Create Room Modal State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -63,7 +81,8 @@ export default function RoomsPage() {
                     name: room.name,
                     member_count: room.getJoinedMemberCount(),
                     unread_count: room.getUnreadNotificationCount(NotificationCountType.Total),
-                    is_joined: true
+                    is_joined: true,
+                    avatar_color: getAvatarColor(room.roomId)
                 }));
 
                 setRooms(formattedRooms);
@@ -78,6 +97,10 @@ export default function RoomsPage() {
     const loadPublicRooms = async () => {
         setIsLoading(true);
         try {
+            // First get joined room IDs to check status
+            const client = await getMatrixClient();
+            const joinedRoomIds = client ? new Set(client.getVisibleRooms().map(r => r.roomId)) : new Set();
+
             const publicRoomsData = await getPublicRooms(searchQuery);
 
             const formattedRooms: Room[] = publicRoomsData.map((room: IPublicRoomsChunkRoom) => ({
@@ -85,7 +108,8 @@ export default function RoomsPage() {
                 name: room.name || room.canonical_alias || room.room_id,
                 member_count: room.num_joined_members,
                 topic: room.topic,
-                is_joined: false // We assume false, could check against joined list but simple is fine
+                is_joined: joinedRoomIds.has(room.room_id),
+                avatar_color: getAvatarColor(room.room_id)
             }));
 
             setRooms(formattedRooms);
@@ -105,12 +129,14 @@ export default function RoomsPage() {
     };
 
     const handleJoinRoom = async (roomId: string) => {
+        setJoiningRoomId(roomId);
         try {
             await joinRoom(roomId);
             router.push(`/rooms/${encodeURIComponent(roomId)}`);
         } catch (error) {
             console.error('Failed to join room:', error);
             alert('Failed to join room. It might be private or you may not have permission.');
+            setJoiningRoomId(null);
         }
     };
 
@@ -124,7 +150,7 @@ export default function RoomsPage() {
             setIsCreateModalOpen(false);
             setNewRoomName('');
             setNewRoomTopic('');
-            // Refresh list and navigate
+
             if (activeTab === 'my_rooms') {
                 await loadJoinedRooms();
             } else {
@@ -168,7 +194,7 @@ export default function RoomsPage() {
                 </header>
 
                 <div className={styles.contentGrid}>
-                    <section className={styles.section} style={{ gridColumn: '1 / -1' }}>
+                    <section className={styles.section} style={{ gridColumn: '1 / -1', minHeight: '80vh' }}>
 
                         {/* Tabs */}
                         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
@@ -176,10 +202,11 @@ export default function RoomsPage() {
                                 className={`btn btn-ghost ${activeTab === 'my_rooms' ? styles.activeTab : ''}`}
                                 onClick={() => setActiveTab('my_rooms')}
                                 style={{
-                                    borderBottom: activeTab === 'my_rooms' ? '2px solid var(--accent-primary)' : 'none',
+                                    borderBottom: activeTab === 'my_rooms' ? '2px solid var(--accent-primary)' : 'transparent',
                                     borderRadius: '0',
                                     paddingBottom: '0.75rem',
-                                    color: activeTab === 'my_rooms' ? 'var(--text-primary)' : 'var(--text-muted)'
+                                    color: activeTab === 'my_rooms' ? 'var(--text-primary)' : 'var(--text-muted)',
+                                    fontWeight: activeTab === 'my_rooms' ? 600 : 400
                                 }}
                             >
                                 <MessageSquare size={16} style={{ marginRight: '0.5rem' }} />
@@ -189,10 +216,11 @@ export default function RoomsPage() {
                                 className={`btn btn-ghost ${activeTab === 'public_directory' ? styles.activeTab : ''}`}
                                 onClick={() => setActiveTab('public_directory')}
                                 style={{
-                                    borderBottom: activeTab === 'public_directory' ? '2px solid var(--accent-primary)' : 'none',
+                                    borderBottom: activeTab === 'public_directory' ? '2px solid var(--accent-primary)' : 'transparent',
                                     borderRadius: '0',
                                     paddingBottom: '0.75rem',
-                                    color: activeTab === 'public_directory' ? 'var(--text-primary)' : 'var(--text-muted)'
+                                    color: activeTab === 'public_directory' ? 'var(--text-primary)' : 'var(--text-muted)',
+                                    fontWeight: activeTab === 'public_directory' ? 600 : 400
                                 }}
                             >
                                 <Globe size={16} style={{ marginRight: '0.5rem' }} />
@@ -215,13 +243,24 @@ export default function RoomsPage() {
                         <div className={styles.roomsList}>
                             {isLoading ? (
                                 <div className={styles.loading}>
-                                    <div className="spinner" />
+                                    <Loader2 className="spinner" size={24} />
                                     <span>Loading rooms...</span>
                                 </div>
                             ) : displayRooms.length === 0 ? (
                                 <div className={styles.empty}>
-                                    <MessageSquare size={40} />
-                                    <p>No rooms found</p>
+                                    <MessageSquare size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                                    <h3>No rooms found</h3>
+                                    <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                                        {activeTab === 'my_rooms'
+                                            ? "You haven't joined any rooms yet."
+                                            : "No public rooms match your search."}
+                                    </p>
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => setIsCreateModalOpen(true)}
+                                    >
+                                        Create New Room
+                                    </button>
                                 </div>
                             ) : (
                                 displayRooms.map((room) => (
@@ -230,16 +269,34 @@ export default function RoomsPage() {
                                         className={styles.roomCard}
                                         style={{ cursor: 'pointer' }}
                                         onClick={() => {
-                                            if (activeTab === 'my_rooms') router.push(`/rooms/${encodeURIComponent(room.id)}`);
+                                            if (room.is_joined || activeTab === 'my_rooms') {
+                                                router.push(`/rooms/${encodeURIComponent(room.id)}`);
+                                            }
                                         }}
                                     >
                                         <div className={styles.roomInfo}>
-                                            <div className={styles.roomAvatar}>
+                                            <div
+                                                className={styles.roomAvatar}
+                                                style={{
+                                                    background: room.avatar_color || 'var(--card-bg-hover)',
+                                                    color: 'white',
+                                                    textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                                }}
+                                            >
                                                 {room.name ? room.name.charAt(0).toUpperCase() : '#'}
                                             </div>
                                             <div>
-                                                <h3>{room.name}</h3>
-                                                <p>{room.member_count} members {room.topic && `• ${room.topic}`}</p>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <h3>{room.name}</h3>
+                                                    {activeTab === 'public_directory' && room.is_joined && (
+                                                        <span className="badge" style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem' }}>JOINED</span>
+                                                    )}
+                                                </div>
+                                                <p>
+                                                    <Users size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                                                    {room.member_count} members
+                                                    {room.topic && <span style={{ opacity: 0.6 }}> • {room.topic}</span>}
+                                                </p>
                                             </div>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -247,19 +304,22 @@ export default function RoomsPage() {
                                                 <span className={styles.unreadBadge}>{room.unread_count}</span>
                                             ) : null}
 
-                                            {activeTab === 'public_directory' && (
+                                            {activeTab === 'public_directory' && !room.is_joined && (
                                                 <button
                                                     className="btn btn-secondary"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleJoinRoom(room.id);
                                                     }}
+                                                    disabled={joiningRoomId === room.id}
                                                 >
-                                                    Join
+                                                    {joiningRoomId === room.id ? (
+                                                        <Loader2 className="spinner" size={16} />
+                                                    ) : "Join"}
                                                 </button>
                                             )}
 
-                                            {activeTab === 'my_rooms' && (
+                                            {(activeTab === 'my_rooms' || room.is_joined) && (
                                                 <ChevronRight size={20} color="var(--text-muted)" />
                                             )}
                                         </div>
@@ -290,7 +350,8 @@ export default function RoomsPage() {
                             borderRadius: 'var(--radius-lg)',
                             width: '90%',
                             maxWidth: '500px',
-                            border: '1px solid var(--border-color)'
+                            border: '1px solid var(--border-color)',
+                            boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                                 <h2>Create New Room</h2>
@@ -342,8 +403,9 @@ export default function RoomsPage() {
                                 </div>
 
                                 {isPublic && (
-                                    <div className="alert alert-info" style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-                                        Public rooms will be listed in the directory and anyone can join.
+                                    <div className="alert alert-info" style={{ marginBottom: '1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Globe size={16} />
+                                        Public rooms can be found and joined by anyone.
                                     </div>
                                 )}
 
@@ -361,7 +423,12 @@ export default function RoomsPage() {
                                         className="btn btn-primary"
                                         disabled={isCreating}
                                     >
-                                        {isCreating ? 'Creating...' : 'Create Room'}
+                                        {isCreating ? (
+                                            <>
+                                                <Loader2 className="spinner" size={16} style={{ marginRight: '0.5rem' }} />
+                                                Creating...
+                                            </>
+                                        ) : 'Create Room'}
                                     </button>
                                 </div>
                             </form>
