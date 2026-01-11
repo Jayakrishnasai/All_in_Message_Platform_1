@@ -86,9 +86,7 @@ password_config:
   localdb_enabled: true
   pepper: "mip_password_pepper_2026"
 
-# Session configuration
-session_lifetime: 24h
-refresh_token_lifetime: 168h
+# Session configuration (using defaults)
 
 # ===========================================
 # Security Keys
