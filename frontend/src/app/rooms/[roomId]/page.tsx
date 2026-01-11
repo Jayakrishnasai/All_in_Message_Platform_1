@@ -7,18 +7,19 @@ import {
     Send,
     MoreVertical,
     Brain,
-    AlertCircle,
     RefreshCw,
     Paperclip,
     Smile
 } from 'lucide-react';
 import styles from './page.module.css';
+import { getMatrixClient } from '@/lib/matrix';
+import { MatrixEvent } from 'matrix-js-sdk';
 
 interface Message {
     id: string;
     sender: string;
     content: string;
-    timestamp: string;
+    timestamp: number;
     intent?: string;
     priority_score?: number;
 }
@@ -41,11 +42,15 @@ export default function RoomPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [summary, setSummary] = useState<string | null>(null);
     const [showSummary, setShowSummary] = useState(false);
+    const [currentUserId, setCurrentUserId] = useState<string>('');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const aiBackendUrl = process.env.NEXT_PUBLIC_AI_BACKEND_URL || '/api';
 
     useEffect(() => {
+        const userId = localStorage.getItem('matrix_user_id');
+        if (userId) setCurrentUserId(userId);
+
         loadRoomData();
     }, [roomId]);
 
@@ -60,31 +65,56 @@ export default function RoomPage() {
     const loadRoomData = async () => {
         setIsLoading(true);
         try {
-            // Load messages
-            const response = await fetch(`${aiBackendUrl}/messages/${encodeURIComponent(roomId)}?limit=100`);
-            if (response.ok) {
-                const data = await response.json();
-                setMessages(data.messages || []);
+            const client = await getMatrixClient();
+            if (client) {
+                const room = client.getRoom(roomId);
+
+                if (room) {
+                    setRoomInfo({
+                        id: roomId,
+                        name: room.name,
+                        topic: room.currentState.getStateEvents('m.room.topic', '')?.getContent().topic,
+                        member_count: room.getJoinedMemberCount()
+                    });
+
+                    // Load initial messages
+                    updateMessagesFromTimeline(room.getLiveTimeline().getEvents());
+
+                    // Listen for new events
+                    client.on('Room.timeline', (event, room, toStartOfTimeline) => {
+                        if (room?.roomId === roomId && !toStartOfTimeline && event.getType() === 'm.room.message') {
+                            updateMessagesFromTimeline(room.getLiveTimeline().getEvents());
+                        }
+                    });
+                } else {
+                    // Try to join if not found (maybe invite invite)
+                    try {
+                        await client.joinRoom(roomId);
+                        // Reload after join
+                        setTimeout(loadRoomData, 1000);
+                        return;
+                    } catch (e) {
+                        console.error("Could not find or join room", e);
+                    }
+                }
             }
         } catch (error) {
             console.error('Failed to load room data:', error);
-            // Mock data for demo
-            setMessages([
-                { id: '1', sender: 'instagram_user123', content: 'Hi, I need help with my order', timestamp: new Date().toISOString(), intent: 'support' },
-                { id: '2', sender: 'admin', content: 'Hello! I\'d be happy to help. What seems to be the issue?', timestamp: new Date().toISOString() },
-                { id: '3', sender: 'instagram_user123', content: 'My package hasn\'t arrived yet and it\'s been a week', timestamp: new Date().toISOString(), intent: 'urgent' },
-                { id: '4', sender: 'admin', content: 'I apologize for the delay. Let me check the tracking status for you.', timestamp: new Date().toISOString() },
-            ]);
+        } finally {
+            setIsLoading(false);
         }
+    };
 
-        setRoomInfo({
-            id: roomId,
-            name: 'Instagram Bridge - Support',
-            topic: 'Customer support via Instagram',
-            member_count: 3
-        });
-
-        setIsLoading(false);
+    const updateMessagesFromTimeline = (events: MatrixEvent[]) => {
+        const formattedMessages: Message[] = events
+            .filter(e => e.getType() === 'm.room.message')
+            .map(e => ({
+                id: e.getId()!,
+                sender: e.getSender()!,
+                content: e.getContent().body,
+                timestamp: e.getTs(),
+            }));
+        setMessages(formattedMessages);
     };
 
     const generateSummary = async () => {
@@ -107,8 +137,6 @@ export default function RoomPage() {
             }
         } catch (error) {
             console.error('Failed to generate summary:', error);
-            setSummary("The conversation involves a customer asking for help with an order that hasn't arrived after a week. Support is assisting with tracking the package.");
-            setShowSummary(true);
         }
     };
 
@@ -116,18 +144,20 @@ export default function RoomPage() {
         e.preventDefault();
         if (!newMessage.trim()) return;
 
-        const message: Message = {
-            id: Date.now().toString(),
-            sender: 'admin',
-            content: newMessage,
-            timestamp: new Date().toISOString()
-        };
-
-        setMessages([...messages, message]);
-        setNewMessage('');
+        try {
+            const client = await getMatrixClient();
+            if (client) {
+                await client.sendTextMessage(roomId, newMessage);
+                setNewMessage('');
+                // Optimistic update handled by event listener usually, but can look laggier if waiting for server roundtrip
+                // We'll rely on the listener for consistency
+            }
+        } catch (error) {
+            console.error('Failed to send', error);
+        }
     };
 
-    const formatTime = (timestamp: string) => {
+    const formatTime = (timestamp: number) => {
         const date = new Date(timestamp);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
@@ -144,13 +174,13 @@ export default function RoomPage() {
                 <div className={styles.headerLeft}>
                     <button
                         className={styles.backBtn}
-                        onClick={() => router.push('/dashboard')}
+                        onClick={() => router.push('/rooms')}
                     >
                         <ArrowLeft size={20} />
                     </button>
                     <div className={styles.roomInfo}>
                         <h1>{roomInfo?.name || 'Room'}</h1>
-                        <p>{roomInfo?.member_count} members • {roomInfo?.topic}</p>
+                        <p>{roomInfo?.member_count || 0} members • {roomInfo?.topic || ''}</p>
                     </div>
                 </div>
                 <div className={styles.headerActions}>
@@ -198,7 +228,7 @@ export default function RoomPage() {
                         {messages.map((message) => (
                             <div
                                 key={message.id}
-                                className={`${styles.message} ${message.sender === 'admin' ? styles.sent : styles.received
+                                className={`${styles.message} ${message.sender === currentUserId ? styles.sent : styles.received
                                     }`}
                             >
                                 <div className={styles.messageHeader}>

@@ -6,9 +6,15 @@ import {
     MessageSquare,
     Search,
     ChevronRight,
-    ArrowLeft
+    ArrowLeft,
+    Plus,
+    X,
+    Lock,
+    Globe
 } from 'lucide-react';
-import styles from '../dashboard/page.module.css'; // Reusing dashboard styles for consistency
+import styles from '../dashboard/page.module.css';
+import { getMatrixClient, createMatrixRoom } from '@/lib/matrix';
+import { Room as MatrixRoom } from 'matrix-js-sdk';
 
 interface Room {
     id: string;
@@ -23,7 +29,12 @@ export default function RoomsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const aiBackendUrl = process.env.NEXT_PUBLIC_AI_BACKEND_URL || '/api';
+    // Create Room Modal State
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [newRoomName, setNewRoomName] = useState('');
+    const [newRoomTopic, setNewRoomTopic] = useState('');
+    const [isPublic, setIsPublic] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
 
     useEffect(() => {
         loadRooms();
@@ -32,21 +43,45 @@ export default function RoomsPage() {
     const loadRooms = async () => {
         setIsLoading(true);
         try {
-            const roomsResponse = await fetch(`${aiBackendUrl}/rooms`);
-            if (roomsResponse.ok) {
-                const roomsData = await roomsResponse.json();
-                setRooms(roomsData.rooms || []);
+            const client = await getMatrixClient();
+            if (client) {
+                const joinedRooms = client.getVisibleRooms();
+
+                const formattedRooms: Room[] = joinedRooms.map((room: MatrixRoom) => ({
+                    id: room.roomId,
+                    name: room.name,
+                    member_count: room.getJoinedMemberCount(),
+                    unread_count: room.getUnreadNotificationCount('total')
+                }));
+
+                setRooms(formattedRooms);
             }
         } catch (error) {
             console.error('Failed to load rooms:', error);
-            // Mock data fallback
-            setRooms([
-                { id: '!demo1:server', name: 'Instagram Bridge - Support', member_count: 3, unread_count: 5 },
-                { id: '!demo2:server', name: 'Instagram Bridge - Sales', member_count: 2, unread_count: 2 },
-                { id: '!demo3:server', name: 'General Chat', member_count: 10, unread_count: 0 },
-            ]);
+            // Fallback to empty if client fails, or we could handle it better
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleCreateRoom = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newRoomName.trim()) return;
+
+        setIsCreating(true);
+        try {
+            const roomId = await createMatrixRoom(newRoomName, newRoomTopic, isPublic);
+            setIsCreateModalOpen(false);
+            setNewRoomName('');
+            setNewRoomTopic('');
+            // Refresh list and navigate
+            await loadRooms();
+            router.push(`/rooms/${encodeURIComponent(roomId)}`);
+        } catch (error) {
+            console.error('Failed to create room:', error);
+            alert('Failed to create room. Please try again.');
+        } finally {
+            setIsCreating(false);
         }
     };
 
@@ -66,6 +101,16 @@ export default function RoomsPage() {
                             <h1>All Rooms</h1>
                             <p>Manage and view all your active conversations</p>
                         </div>
+                    </div>
+                    <div className={styles.headerActions}>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => setIsCreateModalOpen(true)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <Plus size={18} />
+                            Create Room
+                        </button>
                     </div>
                 </header>
 
@@ -122,6 +167,99 @@ export default function RoomsPage() {
                         </div>
                     </section>
                 </div>
+
+                {/* Create Room Modal */}
+                {isCreateModalOpen && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.7)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000
+                    }}>
+                        <div style={{
+                            background: 'var(--bg-card)',
+                            padding: '2rem',
+                            borderRadius: 'var(--radius-lg)',
+                            width: '90%',
+                            maxWidth: '500px',
+                            border: '1px solid var(--border-color)'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                <h2>Create New Room</h2>
+                                <button onClick={() => setIsCreateModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCreateRoom}>
+                                <div className={styles.inputGroup}>
+                                    <label className="label">Room Name</label>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        value={newRoomName}
+                                        onChange={(e) => setNewRoomName(e.target.value)}
+                                        placeholder="e.g. Project Alpha"
+                                        required
+                                    />
+                                </div>
+                                <div className={styles.inputGroup} style={{ marginBottom: '1rem' }}>
+                                    <label className="label">Topic (Optional)</label>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        value={newRoomTopic}
+                                        onChange={(e) => setNewRoomTopic(e.target.value)}
+                                        placeholder="What is this room about?"
+                                    />
+                                </div>
+
+                                <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsPublic(false)}
+                                        className={`btn ${!isPublic ? 'btn-secondary' : 'btn-ghost'}`}
+                                        style={{ flex: 1, border: !isPublic ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)' }}
+                                    >
+                                        <Lock size={16} /> Private
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsPublic(true)}
+                                        className={`btn ${isPublic ? 'btn-secondary' : 'btn-ghost'}`}
+                                        style={{ flex: 1, border: isPublic ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)' }}
+                                    >
+                                        <Globe size={16} /> Public
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={() => setIsCreateModalOpen(false)}
+                                        disabled={isCreating}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary"
+                                        disabled={isCreating}
+                                    >
+                                        {isCreating ? 'Creating...' : 'Create Room'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );
